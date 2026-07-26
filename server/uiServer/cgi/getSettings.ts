@@ -1,4 +1,5 @@
 import type { Context } from 'koa';
+import { parseEntries } from '../../mockStore';
 
 function getSettings(ctx: Context): void {
   const { localStorage } = ctx.req;
@@ -7,6 +8,8 @@ function getSettings(ctx: Context): void {
     active: localStorage.getProperty('active'),
     sessionsDir: localStorage.getProperty('sessionsDir'),
     filterText: localStorage.getProperty('filterText'),
+    mockActive: localStorage.getProperty('mockActive'),
+    mockEntries: parseEntries(localStorage.getProperty('mockEntries')),
   };
 }
 

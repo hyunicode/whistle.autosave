@@ -11,9 +11,16 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['server/**/*.ts', '*.mjs'],
+    files: ['server/**/*.ts', 'test/**/*.js', '*.mjs'],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    // 测试文件以 CJS 方式引用 lib 编译产物
+    files: ['test/**/*.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

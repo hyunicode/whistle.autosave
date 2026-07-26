@@ -1,9 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { check as checkFilter, update as updateFilter } from './filter';
+import { recordMeta } from './metaStore';
+import { consumeMocked, isStreamReq } from './mockStore';
 import type { WhistlePluginContext, WhistleServer } from './types/whistle';
 
-const noop = (): void => {};
+/** 保存响应体并在索引中记录来源信息（供 mock 界面展示与类型推断） */
+const saveBody = (dir: string, fileName: string, body: string, url: string, contentType: string): void => {
+  const filePath = path.resolve(dir, fileName);
+  const record = (): void => {
+    recordMeta(dir, fileName, { url, contentType, time: Date.now() });
+  };
+  fs.writeFile(filePath, body, (err) => {
+    if (err) {
+      fs.writeFile(filePath, body, (retryErr) => {
+        if (!retryErr) {
+          record();
+        }
+      });
+      return;
+    }
+    record();
+  });
+};
 
 /** 根据 content-type 返回文件扩展名；返回 null 表示跳过（图片等） */
 const getExt = (contentType: unknown): string | null => {
@@ -44,7 +63,12 @@ function resStatsServer(server: WhistleServer, { storage, config }: WhistlePlugi
     if (typeof dir !== 'string' || !dir) {
       return;
     }
-    if (!checkFilter(req.originalReq.url)) {
+    const url = req.originalReq.url;
+    if (!checkFilter(url)) {
+      return;
+    }
+    // 跳过被 mock 命中的请求与内置流式服务的内部请求，避免 mock 响应被再次保存
+    if (!url || isStreamReq(url) || consumeMocked(url)) {
       return;
     }
     req.getSession((s) => {
@@ -66,14 +90,9 @@ function resStatsServer(server: WhistleServer, { storage, config }: WhistlePlugi
       if (Buffer.isBuffer(body)) {
         body = body.toString('utf8');
       }
-      const method = getMethodName(req.originalReq.url);
+      const method = getMethodName(url);
       const fileName = `${username}${method}_${Date.now()}.${ext}`;
-      const filePath = path.resolve(dir, fileName);
-      fs.writeFile(filePath, body, (err) => {
-        if (err) {
-          fs.writeFile(filePath, body, noop);
-        }
-      });
+      saveBody(dir, fileName, body, url, typeof contentType === 'string' ? contentType : '');
     });
   });
 }

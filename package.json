@@ -10,6 +10,7 @@
     "build:ui": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "npm run build:server && node --test \"test/**/*.test.js\"",
     "lint": "eslint .",
     "lintfix": "eslint . --fix"
   },
